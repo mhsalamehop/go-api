@@ -1,0 +1,2 @@
+PORT=8000
+POSTGRES_URI=POSTGRES_URI=postgres://postgres:1234@localhost:5432/db?sslmode=disable
