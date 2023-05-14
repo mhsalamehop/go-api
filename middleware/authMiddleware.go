@@ -23,7 +23,9 @@ func (amw *Authorization) IsAuthorized(next http.Handler) http.Handler {
 			http.Error(w, "error verifying JWT token "+err.Error(), http.StatusUnauthorized)
 		}
 		email := claims.(jwt.MapClaims)["email"].(string)
+		role := claims.(jwt.MapClaims)["role"].(string)
 		r.Header.Set("email", email)
+		r.Header.Set("role", role)
 		next.ServeHTTP(w, r)
 	})
 }

@@ -24,6 +24,8 @@ func main() {
 
 	r := mux.NewRouter()
 	routes.UserRoutes(r)
+	routes.SavedMovieRouter(r)
+	routes.MoviesRoutes(r)
 	// r.Use(middleware.Authentication())
 
 	// routes.MoiveRoutes(r)

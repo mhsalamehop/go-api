@@ -7,12 +7,13 @@ import (
 )
 
 var (
-	signingKey = []byte(os.Getenv("jwt_secret"))
+	signingKey = []byte(os.Getenv("JWT_SECRET"))
 )
 
-func GetToken(email string) (string, error) {
+func GetToken(email,role string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": email,
+		"role": role,
 	})
 	ts, err := token.SignedString(signingKey)
 	return ts, err
@@ -27,3 +28,5 @@ func VerifyToken(ts string) (jwt.Claims, error) {
 	}
 	return token.Claims, err
 }
+
+// `INSERT INTO table_name clms` values() ON CONFLICT(pk) DO UPDATE SET id=$1 -- movies backfill
