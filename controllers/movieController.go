@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 
@@ -9,31 +10,51 @@ import (
 )
 
 type MovieResult struct {
-	Results []models.Movies `json:"results"`
+	Page         int64           `json:"page"`
+	Results      []models.Movies `json:"results"`
+	TotalPages   int64           `json:"total_pages"`
+	TotalResults int64           `json:"total_results"`
 }
 
-func GetMovies(w http.ResponseWriter, r *http.Request){
+func GetMovies(w http.ResponseWriter, r *http.Request) {
 	// var movie models.Movies
 	url := "https://api.themoviedb.org/3/movie/popular?language=en-US&page=1"
 	token := os.Getenv("MYMOVIEDB_TOKEN")
-	req, err := http.NewRequest("GET",url,nil)
+	client := http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		http.Error(w,err.Error(),http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	req.Header.Add("accept","application/json")
+	req.Header.Add("accept", "application/json")
 	req.Header.Add("Authorization", "Bearer "+token)
 
-	
-	res, err := http.DefaultClient.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
-		http.Error(w,err.Error(),http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	defer res.Body.Close()
 
 	var movieResult MovieResult
-	err = json.NewDecoder(res.Body).Decode(&movieResult)
-	if err !=nil {
-		panic(err.Error())
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	json.NewEncoder(w).Encode(movieResult.Results)
+	err = json.Unmarshal(body, &movieResult)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(movieResult.Results)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(data)
+
 }

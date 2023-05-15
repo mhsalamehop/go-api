@@ -3,7 +3,8 @@ DROP TABLE saved_movies;
 CREATE TABLE IF NOT EXISTS saved_movies (
     id SERIAL PRIMARY KEY,
     title text,
-    overview text
+    overview text,
+    saved_info json
 );
 CREATE TABLE IF NOT EXISTS users_table (
     id SERIAL PRIMARY KEY,
