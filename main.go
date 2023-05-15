@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 
@@ -26,10 +27,14 @@ func main() {
 	routes.UserRoutes(r)
 	routes.SavedMovieRouter(r)
 	routes.MoviesRoutes(r)
-	// r.Use(middleware.Authentication())
+
+	corsHandler := handlers.CORS(
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"}),
+	)
 
 	// routes.MoiveRoutes(r)
 	// routes.SavedMovieRoutes(r)
 	utils.LogInfo("running server on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, r))
+	log.Fatal(http.ListenAndServe(":"+port, corsHandler(r)))
 }

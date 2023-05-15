@@ -10,7 +10,7 @@ import (
 
 type Authorization struct{}
 
-func (amw *Authorization) IsAuthorized(next http.Handler) http.Handler {
+func (amw *Authorization) IsAuthorized(userRole string,next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ts := r.Header.Get("Authorization")
 		if len(ts) == 0 {
@@ -21,11 +21,31 @@ func (amw *Authorization) IsAuthorized(next http.Handler) http.Handler {
 		claims, err := utils.VerifyToken(ts)
 		if err != nil {
 			http.Error(w, "error verifying JWT token "+err.Error(), http.StatusUnauthorized)
+			return
 		}
-		email := claims.(jwt.MapClaims)["email"].(string)
-		role := claims.(jwt.MapClaims)["role"].(string)
-		r.Header.Set("email", email)
-		r.Header.Set("role", role)
+		email, ok := claims.(jwt.MapClaims)["email"].(string)
+		if !ok {
+			http.Error(w, "invalid role claim in token", http.StatusUnauthorized)
+			return
+		}
+		if !validEmail(email){
+			http.Error(w, "invalid email format", http.StatusUnauthorized)
+			return
+		}
+		role, ok := claims.(jwt.MapClaims)["role"].(string)
+		if !ok {
+			http.Error(w, "invalid role claim in token", http.StatusUnauthorized)
+			return
+		}
+		if role != userRole {
+			http.Error(w,"Access Denied",http.StatusForbidden)
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	})
+}
+
+func validEmail(email string) bool {
+	return strings.HasSuffix(email, "@gmail.com")
 }

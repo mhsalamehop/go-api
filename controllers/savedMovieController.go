@@ -13,24 +13,33 @@ import (
 
 func GetSavedMovies(w http.ResponseWriter, r *http.Request) {
 	var movie models.SavedMovies
+	var savedInfoJson []byte
 	db := store.OpenConnection()
-	querystr := `SELECT id, title, overview FROM saved_movies`
+	querystr := `SELECT id, title, overview, saved_info FROM saved_movies`
 	rows, err := db.Query(querystr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 	var movies []models.SavedMovies
 	for rows.Next() {
-		err := rows.Scan(&movie.Id, &movie.Title, &movie.Overview)
+		err := rows.Scan(&movie.Id, &movie.Title, &movie.Overview, &savedInfoJson)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = json.Unmarshal(savedInfoJson,&movie.SavedInfo)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		movies = append(movies, movie)
 	}
 	data, err := json.Marshal(movies)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	w.Write(data)
 }
@@ -40,21 +49,34 @@ func AddMovie(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(role)
 	if role != "admin" {
 		http.Error(w, "Admins only can add movies", http.StatusUnauthorized)
+		return
 	}
 	var movie models.SavedMovies
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	if err := json.Unmarshal(body, &movie); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	saveInfoJson , err := json.Marshal(movie.SavedInfo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	db := store.OpenConnection()
-	queryStr := `INSERT INTO saved_movies (title, Overview) VALUES($1, $2) RETURNING id`
-	db.QueryRow(queryStr, movie.Title, movie.Overview).Scan(&movie.Id)
+	queryStr := `INSERT INTO saved_movies (title, overview, saved_info) VALUES($1, $2, $3) RETURNING id`
+	err = db.QueryRow(queryStr, movie.Title, movie.Overview, saveInfoJson).Scan(&movie.Id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	data, err := json.Marshal(movie)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	w.Write(data)
 }
@@ -66,23 +88,28 @@ func UpdateMovie(w http.ResponseWriter, r *http.Request) {
 	movie.Id = id
 	if role != "admin" {
 		http.Error(w, "Admins only can add movies", http.StatusUnauthorized)
+		return
 	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	if err := json.Unmarshal(body, &movie); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	db := store.OpenConnection()
 	queryStr := `UPDATE saved_movies SET title=$1, overview=$2 WHERE id=$3`
 	db.QueryRow(queryStr, movie.Title, movie.Overview, id)
 	if err != nil {
 		http.Error(w,err.Error(),http.StatusInternalServerError)
+		return
 	}
 	data, err := json.Marshal(movie)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	w.Write(data)
 }
