@@ -12,7 +12,7 @@ import (
 func SavedMovieRouter(r *mux.Router){
 	var amw middleware.Authorization
 	r.HandleFunc("/fav",controllers.GetSavedMovies).Methods(http.MethodGet)
-	r.Handle("/fav",amw.IsAuthorized("admin",http.HandlerFunc(controllers.AddMovie))).Methods(http.MethodPost)
-	r.Handle("/fav/{id}",amw.IsAuthorized("admin",http.HandlerFunc(controllers.UpdateMovie))).Methods(http.MethodPut)
-	r.Handle("/fav/{id}",amw.IsAuthorized("admin",http.HandlerFunc(controllers.DeleteMovie))).Methods(http.MethodDelete)
+	r.Handle("/fav",amw.IsAuthorized(http.HandlerFunc(controllers.AddMovie))).Methods(http.MethodPost)
+	r.Handle("/fav/{id}",amw.IsAuthorized(http.HandlerFunc(controllers.UpdateMovie))).Methods(http.MethodPut)
+	r.Handle("/fav/{id}",amw.IsAuthorized(http.HandlerFunc(controllers.DeleteMovie))).Methods(http.MethodDelete)
 }

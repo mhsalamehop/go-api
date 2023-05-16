@@ -79,7 +79,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	querystr := `SELECT username, password, email, id, role FROM users_table WHERE email=$1`
-	rows, err := db.Query(querystr, loginInfo.Password)
+	rows, err := db.Query(querystr, loginInfo.Username)
 	if err != nil {
 		http.Error(w, "sql here "+err.Error(), http.StatusInternalServerError)
 		return
@@ -107,7 +107,4 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// change from basic auth to body ---> done
-// json object to database ---> done
-// add cors ----> done
-// do not use header to check authorized users
+// get userRole from header
