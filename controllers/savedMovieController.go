@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -45,12 +44,6 @@ func GetSavedMovies(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddMovie(w http.ResponseWriter, r *http.Request) {
-	role := r.Header.Get("role")
-	fmt.Println(role)
-	if role != "admin" {
-		http.Error(w, "Admins only can add movies", http.StatusUnauthorized)
-		return
-	}
 	var movie models.SavedMovies
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -82,14 +75,9 @@ func AddMovie(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateMovie(w http.ResponseWriter, r *http.Request) {
-	role := r.Header.Get("role")
 	var movie models.SavedMovies
 	id := mux.Vars(r)["id"]
 	movie.Id = id
-	if role != "admin" {
-		http.Error(w, "Admins only can add movies", http.StatusUnauthorized)
-		return
-	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

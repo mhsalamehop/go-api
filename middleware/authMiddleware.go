@@ -10,9 +10,10 @@ import (
 
 type Authorization struct{}
 
-func (amw *Authorization) IsAuthorized(userRole string,next http.Handler) http.Handler {
+func (amw *Authorization) IsAuthorized(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ts := r.Header.Get("Authorization")
+		userRole := r.Header.Get("role")
 		if len(ts) == 0 {
 			http.Error(w, "must provide auth token", http.StatusUnauthorized)
 			return
