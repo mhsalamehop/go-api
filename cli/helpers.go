@@ -21,71 +21,77 @@ type MovieResult struct {
 	TotalResults int64           `json:"total_results"`
 }
 
-func GetMoviesFromAPI() (MovieResult, error) {
+func GetMoviesFromAPI(pages int) (*[]MovieResult, error) {
 	err := godotenv.Load(".env")
 	if err != nil {
 		utils.LogError("loading .env file with err %s", err.Error())
 	}
-	url := "https://api.themoviedb.org/3/movie/popular?language=en-US&page=1"
-	token := os.Getenv("MYMOVIEDB_TOKEN")
-	client := http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-	var movieResult MovieResult
-	if err != nil {
-		utils.LogError(err.Error())
-		return movieResult, err
-	}
-	req.Header.Add("accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+token)
+	var movies []MovieResult
+	for i := 1 ; i <= pages ; i++ {
 
-	res, err := client.Do(req)
-	if err != nil {
-		utils.LogError(err.Error())
-		return movieResult, err
+		url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?language=en-US&page=%d",i)
+		token := os.Getenv("MYMOVIEDB_TOKEN")
+		client := http.Client{}
+		req, err := http.NewRequest("GET", url, nil)
+		var movieResult MovieResult
+		if err != nil {
+			utils.LogError(err.Error())
+			return nil, err
+		}
+		req.Header.Add("accept", "application/json")
+		req.Header.Add("Authorization", "Bearer "+token)
+	
+		res, err := client.Do(req)
+		if err != nil {
+			utils.LogError(err.Error())
+			return nil, err
+		}
+		defer res.Body.Close()
+	
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			utils.LogError(err.Error())
+			return nil, err
+		}
+		err = json.Unmarshal(body, &movieResult)
+		if err != nil {
+			utils.LogError(err.Error())
+			return nil, err
+		}
+		movies = append(movies, movieResult)
 	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		utils.LogError(err.Error())
-		return movieResult, err
-	}
-	err = json.Unmarshal(body, &movieResult)
-	if err != nil {
-		utils.LogError(err.Error())
-		return movieResult, err
-	}
-	return movieResult, nil
+	return &movies, nil
 
 }
 
-func BackFill(movieResult MovieResult, db *sql.DB) error {
-	valueStrings := []string{}
-	valueArgs := []interface{}{}
-	txn, err := db.Begin()
-	if err != nil {
-		utils.LogError(err.Error())
-		return err
-	}
+func BackFill(movieResult []MovieResult, db *sql.DB) error {
+	valueStrings := make([]string,0,len(movieResult))
+	valueArgs := make([]interface{},0, 3*len(movieResult))
 	c := 0
-	for _, w := range movieResult.Results {
-		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", c+1, c+2, c+3))
-		valueArgs = append(valueArgs, w.Id)
-		valueArgs = append(valueArgs, w.Title)
-		valueArgs = append(valueArgs, w.Overview)
-		c += 3
+	for i := 0 ; i < len(movieResult) ; i++ {
+		var x = movieResult[i].Results
+		for _, val := range x {
+			str := fmt.Sprintf("($%d, $%d, $%d)", c*3+1,  c*3+2, c*3+3)
+			
+			valueStrings = append(valueStrings, str)
+			valueArgs = append(valueArgs, val.Id)
+			valueArgs = append(valueArgs, val.Title)
+			valueArgs = append(valueArgs, val.Overview)
+			c++
+			if len(valueArgs) >= 65000  || i == len(movieResult)-1{
+				smt := `INSERT INTO api_movies (id, title, overview) VALUES %s ON CONFLICT (id) DO UPDATE SET overview = excluded.overview, title = excluded.title`
+				smt = fmt.Sprintf(smt, strings.Join(valueStrings, ", "))
+				_, err := db.Query(smt, valueArgs...)
+				if err != nil {
+					utils.LogError(err.Error())
+					return err
+				}
+				valueStrings = make([]string,0,len(movieResult))
+				valueArgs = make([]interface{},0, 3*len(movieResult))
+				c = 0
+			}
+		}
 	}
-	smt := `INSERT INTO api_movies (id, title, overview) VALUES %s ON CONFLICT (id) DO UPDATE SET overview = excluded.overview`
-	smt = fmt.Sprintf(smt, strings.Join(valueStrings, ", "))
-	_, err = txn.Exec(smt, valueArgs...)
-	if err != nil {
-		utils.LogError(err.Error())
-		return err
-	}
-	err = txn.Commit()
-	if err != nil {
-		utils.LogError(err.Error())
-		return err
-	}
+
 	return nil
 }
