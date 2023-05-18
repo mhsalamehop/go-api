@@ -50,3 +50,5 @@ func (amw *Authorization) IsAuthorized(next http.Handler) http.Handler {
 func validEmail(email string) bool {
 	return strings.HasSuffix(email, "@gmail.com")
 }
+
+//back-fill to fill the database (bulk insert) upsert
